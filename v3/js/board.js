@@ -220,6 +220,7 @@
       "</div>" +
       "</div>" +
       '<div class="board-grid" id="board-grid"></div>' +
+      '<div id="board-print-table"></div>' +
       '<div class="board-backlog">' +
       '<h3>Pendientes <span class="board-backlog-hint">sin fecha asignada</span></h3>' +
       '<div class="board-backlog-table" id="board-backlog-table"></div>' +
@@ -631,7 +632,45 @@
 
   /* ---------------- imprimir ---------------- */
 
+  function entryLineHtml(e) {
+    var bits = [];
+    bits.push("<strong>" + escapeHtml(e.cliente || "(sin cliente)") + "</strong>");
+    if (e.localidad) bits.push(escapeHtml(e.localidad));
+    if (e.tecnicos) {
+      var names = e.tecnicos.split(",").map(function (s) { return s.trim(); }).filter(Boolean);
+      bits.push(names.map(function (n) {
+        return '<span style="color:' + techColor(n) + '">' + escapeHtml(n) + "</span>";
+      }).join(", "));
+    }
+    if (e.observacion) bits.push(escapeHtml(e.observacion));
+    return '<div class="ppt-entry' + (e.hecho ? " ppt-done" : "") + '">' +
+      '<span class="ppt-check">' + (e.hecho ? "☑" : "☐") + "</span> " +
+      bits.join(" — ") +
+      "</div>";
+  }
+
+  function renderPrintTable() {
+    var box = document.getElementById("board-print-table");
+    var cols = state.columns;
+    var head = "<tr><th></th>" + cols.map(function (c) { return "<th>" + escapeHtml(c.nombre) + "</th>"; }).join("") + "</tr>";
+
+    var rows = "";
+    for (var i = 0; i < 7; i++) {
+      var date = addDays(state.weekStart, i);
+      var iso = isoDate(date);
+      rows += "<tr><td class=\"ppt-day\">" + shortLabel(date).replace(" ", "<br>") + "</td>";
+      cols.forEach(function (col) {
+        var entries = state.entries.filter(function (e) { return e.date === iso && e.colId === col.id; });
+        rows += "<td>" + entries.map(entryLineHtml).join("") + "</td>";
+      });
+      rows += "</tr>";
+    }
+
+    box.innerHTML = '<table class="board-print-table"><thead>' + head + "</thead><tbody>" + rows + "</tbody></table>";
+  }
+
   function printWeek() {
+    renderPrintTable();
     window.print();
   }
 

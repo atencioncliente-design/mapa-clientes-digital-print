@@ -28,6 +28,7 @@
 #board-root { max-width: 1500px; margin: 0 auto; padding: 18px 20px 60px; }
 
 .board-print-header { display: none; }
+#board-print-table { display: none; }
 
 .board-toolbar {
   display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;
@@ -169,15 +170,28 @@
   .board-print-header img { height: 30px; }
   .board-print-header strong { display: block; font-size: 15px; }
   .board-print-header span { display: block; font-size: 12px; color: #555; }
-  .board-grid { border-color: #999; overflow: visible !important; height: auto !important; }
-  .board-head-cell {
-    position: static !important; top: auto !important;
-    background: #222 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  .board-grid, .board-backlog { display: none !important; }
+  #board-print-table { display: block !important; }
+
+  .board-print-table {
+    width: 100%; border-collapse: collapse; table-layout: fixed;
   }
-  .board-day-label, .board-day-cell { break-inside: avoid; overflow: visible !important; }
-  .board-day-label.is-today, .board-day-cell.is-today { background: #fff !important; }
-  .board-card { break-inside: avoid; background: #F4F4F4 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .board-backlog, .board-backlog-table { break-inside: avoid; margin-top: 14px; overflow: visible !important; }
-  .board-backlog-row { break-inside: avoid; min-width: 0; }
-  @page { size: A4 landscape; margin: 10mm; }
+  .board-print-table th, .board-print-table td {
+    border: 1px solid #999; padding: 2px 4px; vertical-align: top; text-align: left;
+  }
+  .board-print-table th:first-child, .board-print-table td.ppt-day { width: 44px; }
+  .board-print-table thead { display: table-header-group; }
+  .board-print-table th {
+    background: #222 !important; color: #fff; font-size: 9.5px; padding: 4px;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .board-print-table td.ppt-day { font-size: 8.5px; font-weight: 700; text-align: center; }
+  .board-print-table tr { break-inside: avoid; }
+  .ppt-entry {
+    font-size: 8px; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    padding: 1px 0;
+  }
+  .ppt-entry.ppt-done { color: #888; }
+  .ppt-check { display: inline-block; width: 9px; }
+  @page { size: A4 landscape; margin: 8mm; }
 }
