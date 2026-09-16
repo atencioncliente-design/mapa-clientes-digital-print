@@ -157,6 +157,11 @@
   #app-header, .board-toolbar, .board-add-card, .board-col-actions, .board-backlog-add,
   #sidebar-backdrop, #modal-backdrop, #toast, #detail-sheet { display: none !important; }
   #view-mapa { display: none !important; }
+  /* /css/style.css oculta #app entero para imprimir la "hoja de ruta" de
+     viajes (función que en v3 ya no se usa) — lo revertimos aquí para
+     poder imprimir el tablero. */
+  #app { display: flex !important; }
+  #print-area { display: none !important; }
   body, #app, #view-tablero { background: #fff !important; overflow: visible !important; height: auto !important; }
   #view-tablero { display: block !important; }
   #board-root { max-width: none; padding: 0; margin: 0; }
