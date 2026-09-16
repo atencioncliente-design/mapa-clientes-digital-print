@@ -1,0 +1,9 @@
+{
+  "name": "mapa-clientes-digital-print",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Mapa interactivo de clientes de Digital Print Maquinaria Grafica (sitio estatico + funciones Netlify).",
+  "dependencies": {
+    "@netlify/blobs": "^8.1.0"
+  }
+}

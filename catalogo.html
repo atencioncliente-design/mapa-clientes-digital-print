@@ -1,0 +1,597 @@
+<title>Catálogo de Maquinaria</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --bg:#f2efe7;
+    --surface:#ffffff;
+    --surface-2:#e9e3d5;
+    --ink:#211d17;
+    --ink-muted:#6f6656;
+    --border:#ddd4bf;
+    --accent:#b23224;
+    --accent-ink:#fff8f0;
+    --accent-soft:#f4ded7;
+    --shadow: 0 1px 2px rgba(33,29,23,.06), 0 6px 16px -8px rgba(33,29,23,.18);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#18160f;
+      --surface:#221f18;
+      --surface-2:#2b271d;
+      --ink:#ece5d6;
+      --ink-muted:#a89b83;
+      --border:#3a352a;
+      --accent:#e2604e;
+      --accent-ink:#1a120e;
+      --accent-soft:#3c241e;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 20px -10px rgba(0,0,0,.55);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#18160f;
+    --surface:#221f18;
+    --surface-2:#2b271d;
+    --ink:#ece5d6;
+    --ink-muted:#a89b83;
+    --border:#3a352a;
+    --accent:#e2604e;
+    --accent-ink:#1a120e;
+    --accent-soft:#3c241e;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 20px -10px rgba(0,0,0,.55);
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:"IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3{
+    font-family:"Barlow Condensed", "Arial Narrow", sans-serif;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:.02em;
+    text-wrap:balance;
+    margin:0;
+  }
+  .mono{font-family:"IBM Plex Mono", ui-monospace, monospace; font-variant-numeric:tabular-nums;}
+
+  /* ---------- Header ---------- */
+  .hero{
+    padding:38px 24px 22px;
+    max-width:1180px;
+    margin:0 auto;
+    border-bottom:1px solid var(--border);
+  }
+  .hero-eyebrow{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:.72rem;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--accent);
+    margin-bottom:10px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .hero-eyebrow::before{
+    content:"";
+    width:8px;height:8px;
+    background:var(--accent);
+    display:inline-block;
+  }
+  .hero h1{ font-size:clamp(2.1rem, 5vw, 3.1rem); line-height:1.02; }
+  .hero p{
+    max-width:62ch;
+    margin:12px 0 0;
+    color:var(--ink-muted);
+    font-size:1.02rem;
+    line-height:1.5;
+  }
+  .hero-stats{
+    display:flex;
+    gap:28px;
+    margin-top:22px;
+    flex-wrap:wrap;
+  }
+  .hero-stat b{
+    display:block;
+    font-family:"Barlow Condensed", sans-serif;
+    font-size:1.9rem;
+    font-weight:700;
+    line-height:1;
+  }
+  .hero-stat span{
+    font-size:.74rem;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    color:var(--ink-muted);
+  }
+
+  /* ---------- Toolbar ---------- */
+  .toolbar{
+    position:sticky; top:0; z-index:10;
+    background:var(--bg);
+    border-bottom:1px solid var(--border);
+    padding:14px 24px;
+  }
+  .toolbar-inner{
+    max-width:1180px;
+    margin:0 auto;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+  }
+  .search-row{ display:flex; gap:10px; align-items:center; }
+  .search-row input{
+    flex:1;
+    background:var(--surface);
+    border:1px solid var(--border);
+    color:var(--ink);
+    padding:10px 14px;
+    border-radius:2px;
+    font-family:"IBM Plex Sans", sans-serif;
+    font-size:.92rem;
+  }
+  .search-row input:focus{ outline:2px solid var(--accent); outline-offset:-1px; }
+  .result-count{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:.76rem;
+    color:var(--ink-muted);
+    white-space:nowrap;
+  }
+  .chips{
+    display:flex;
+    gap:7px;
+    flex-wrap:wrap;
+  }
+  .chip{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:.72rem;
+    letter-spacing:.02em;
+    padding:6px 11px;
+    border-radius:999px;
+    border:1px solid var(--border);
+    background:var(--surface);
+    color:var(--ink-muted);
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .chip:hover{ border-color:var(--accent); color:var(--ink); }
+  .chip.active{
+    background:var(--accent);
+    border-color:var(--accent);
+    color:var(--accent-ink);
+    font-weight:500;
+  }
+
+  /* ---------- Main ---------- */
+  main{ max-width:1180px; margin:0 auto; padding:8px 24px 80px; }
+  .cat-section{ margin-top:44px; }
+  .cat-head{
+    display:flex;
+    align-items:baseline;
+    gap:12px;
+    border-bottom:2px solid var(--ink);
+    padding-bottom:8px;
+    margin-bottom:18px;
+  }
+  .cat-head h2{ font-size:1.5rem; }
+  .cat-head .cat-count{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:.76rem;
+    color:var(--ink-muted);
+  }
+
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(270px, 1fr));
+    gap:14px;
+  }
+
+  .card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:3px;
+    overflow:hidden;
+    box-shadow:var(--shadow);
+    display:flex;
+    flex-direction:column;
+  }
+  .card-body{
+    padding:14px 16px 14px;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  .card-media{
+    position:relative;
+    aspect-ratio:4/3;
+    background:var(--surface-2);
+    border-bottom:1px solid var(--border);
+    overflow:hidden;
+  }
+  .card-media img{
+    width:100%; height:100%;
+    object-fit:contain;
+    display:block;
+    padding:10px;
+    cursor:zoom-in;
+  }
+  .card-media.no-img{
+    display:flex; align-items:center; justify-content:center;
+  }
+  .card-media.no-img::after{
+    content:"Sin imagen disponible";
+    font-family:"IBM Plex Mono", monospace;
+    font-size:.68rem;
+    color:var(--ink-muted);
+    text-transform:uppercase;
+    letter-spacing:.05em;
+  }
+  .play-btn{
+    position:absolute;
+    right:8px; bottom:8px;
+    display:flex; align-items:center; gap:6px;
+    background:var(--accent);
+    color:var(--accent-ink);
+    border:none;
+    padding:7px 12px 7px 10px;
+    border-radius:999px;
+    font-family:"IBM Plex Mono", monospace;
+    font-size:.68rem;
+    font-weight:500;
+    letter-spacing:.03em;
+    text-transform:uppercase;
+    cursor:pointer;
+    box-shadow:0 2px 8px rgba(0,0,0,.25);
+  }
+  .play-btn:hover{ filter:brightness(1.08); }
+  .play-btn svg{ width:11px; height:11px; }
+
+  .video-modal{
+    position:fixed; inset:0; z-index:100;
+    display:flex; align-items:center; justify-content:center;
+    padding:24px;
+  }
+  .video-modal-backdrop{
+    position:absolute; inset:0;
+    background:rgba(10,8,5,.78);
+  }
+  .video-modal-box{
+    position:relative;
+    width:100%; max-width:900px;
+    background:#000;
+    border-radius:4px;
+    box-shadow:0 20px 60px -10px rgba(0,0,0,.6);
+  }
+  .video-frame{ position:relative; width:100%; aspect-ratio:16/9; }
+  .video-frame iframe{ position:absolute; inset:0; width:100%; height:100%; border:0; }
+  .video-modal-bar{
+    position:absolute; top:-40px; left:0; right:0;
+    display:flex; align-items:center; justify-content:space-between;
+    gap:10px;
+  }
+  .video-fallback{
+    color:var(--accent-soft, #f4ded7);
+    background:rgba(255,255,255,.08);
+    border:1px solid rgba(255,255,255,.25);
+    padding:6px 12px;
+    border-radius:999px;
+    font-family:"IBM Plex Mono", monospace;
+    font-size:.72rem;
+    text-decoration:none;
+    white-space:nowrap;
+  }
+  .video-fallback:hover{ background:rgba(255,255,255,.16); }
+  .video-close{
+    background:none; border:none;
+    color:#fff;
+    font-family:"IBM Plex Mono", monospace;
+    font-size:.85rem;
+    cursor:pointer;
+    padding:6px 10px;
+  }
+
+  .image-modal-box{
+    position:relative;
+    max-width:min(900px, 92vw);
+    max-height:88vh;
+    background:var(--surface);
+    border-radius:4px;
+    padding:16px;
+    box-shadow:0 20px 60px -10px rgba(0,0,0,.6);
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  .image-modal-box .video-close{
+    align-self:flex-end;
+    color:var(--ink);
+  }
+  .image-modal-box img{
+    max-width:100%;
+    max-height:74vh;
+    object-fit:contain;
+    display:block;
+    margin:0 auto;
+  }
+  .image-modal-caption{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:.8rem;
+    color:var(--ink-muted);
+    text-align:center;
+  }
+  .card-model{
+    font-family:"IBM Plex Mono", monospace;
+    font-weight:600;
+    font-size:.98rem;
+    line-height:1.25;
+  }
+  .card-tagline{
+    font-size:.76rem;
+    text-transform:uppercase;
+    letter-spacing:.05em;
+    color:var(--accent);
+    font-weight:500;
+  }
+  .card-desc{
+    font-size:.86rem;
+    line-height:1.45;
+    color:var(--ink-muted);
+    flex:1;
+  }
+  .badge-row{ display:flex; flex-wrap:wrap; gap:6px; }
+  .badge{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:.68rem;
+    background:var(--surface-2);
+    color:var(--ink);
+    padding:3px 8px;
+    border-radius:2px;
+    white-space:nowrap;
+  }
+  .spec-table{
+    border-top:1px solid var(--border);
+    padding-top:9px;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:6px 10px;
+  }
+  .spec{ display:flex; flex-direction:column; gap:1px; min-width:0; }
+  .spec dt{
+    font-size:.62rem;
+    text-transform:uppercase;
+    letter-spacing:.05em;
+    color:var(--ink-muted);
+  }
+  .spec dd{
+    margin:0;
+    font-family:"IBM Plex Mono", monospace;
+    font-size:.78rem;
+    font-weight:500;
+    overflow-wrap:break-word;
+  }
+
+  .empty-state{
+    text-align:center;
+    color:var(--ink-muted);
+    padding:60px 20px;
+    font-size:.92rem;
+  }
+
+  footer{
+    max-width:1180px;
+    margin:0 auto;
+    padding:26px 24px 50px;
+    border-top:1px solid var(--border);
+    color:var(--ink-muted);
+    font-size:.78rem;
+    line-height:1.6;
+  }
+  footer a{ color:var(--accent); }
+
+  [hidden]{ display:none !important; }
+</style>
+
+<div class="hero">
+  <div class="hero-eyebrow">Digital Print Maquinaria Gráfica</div>
+  <h1>Catálogo completo de maquinaria</h1>
+  <p>Listado de todas las máquinas que comercializa Digital Print, con las características técnicas publicadas en su web, organizadas por familia de producto para consultarlas de un vistazo.</p>
+  <div class="hero-stats">
+    <div class="hero-stat"><b id="stat-total">73</b><span>Máquinas</span></div>
+    <div class="hero-stat"><b id="stat-cats">19</b><span>Categorías</span></div>
+    <div class="hero-stat"><b>4</b><span>De ocasión</span></div>
+  </div>
+</div>
+
+<div class="toolbar">
+  <div class="toolbar-inner">
+    <div class="search-row">
+      <input id="search" type="text" placeholder="Buscar por modelo, característica o palabra clave… (ej. “troqueladora”, “1080”, “RFID”)">
+      <div class="result-count" id="result-count">73 resultados</div>
+    </div>
+    <div class="chips" id="chips"></div>
+  </div>
+</div>
+
+<main id="main"></main>
+
+<div class="video-modal" id="videoModal" hidden>
+  <div class="video-modal-backdrop" id="videoBackdrop"></div>
+  <div class="video-modal-box">
+    <div class="video-modal-bar">
+      <a class="video-fallback" id="videoFallback" href="#" target="_blank" rel="noopener">Abrir en YouTube ↗</a>
+      <button class="video-close" id="videoClose" aria-label="Cerrar vídeo">✕ Cerrar</button>
+    </div>
+    <div class="video-frame" id="videoFrame"></div>
+  </div>
+</div>
+
+<div class="video-modal" id="imageModal" hidden>
+  <div class="video-modal-backdrop" id="imageBackdrop"></div>
+  <div class="image-modal-box">
+    <button class="video-close" id="imageClose" aria-label="Cerrar imagen">✕ Cerrar</button>
+    <img id="imageModalImg" src="" alt="">
+    <div class="image-modal-caption" id="imageModalCaption"></div>
+  </div>
+</div>
+
+<footer>
+  Datos recopilados de <a href="https://digitalprintmaquinariagrafica.com" target="_blank" rel="noopener">digitalprintmaquinariagrafica.com</a> — categorías, descripciones y fichas técnicas tal como aparecen publicadas en cada ficha de producto. Las 4 máquinas de la sección "Ocasión" son de segunda mano; el resto corresponde al catálogo de maquinaria nueva.
+</footer>
+
+<script src="catalogo-data.js"></script>
+<script src="catalogo-media.js"></script>
+<script>
+(function(){
+  const chipsEl = document.getElementById('chips');
+  const mainEl = document.getElementById('main');
+  const searchEl = document.getElementById('search');
+  const countEl = document.getElementById('result-count');
+  const videoModal = document.getElementById('videoModal');
+  const videoFrame = document.getElementById('videoFrame');
+  const videoClose = document.getElementById('videoClose');
+  const videoBackdrop = document.getElementById('videoBackdrop');
+  const videoFallback = document.getElementById('videoFallback');
+  const imageModal = document.getElementById('imageModal');
+  const imageBackdrop = document.getElementById('imageBackdrop');
+  const imageClose = document.getElementById('imageClose');
+  const imageModalImg = document.getElementById('imageModalImg');
+  const imageModalCaption = document.getElementById('imageModalCaption');
+
+  CATALOG.forEach(m=>{
+    const media = MEDIA[m.model];
+    m.img = media ? media.img : null;
+    m.yt = media ? media.yt : null;
+  });
+
+  function openVideo(ytId){
+    videoFallback.href = `https://www.youtube.com/watch?v=${ytId}`;
+    videoFrame.innerHTML = `<iframe src="https://www.youtube.com/embed/${ytId}?autoplay=1&rel=0" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen title="Vídeo de la máquina"></iframe>`;
+    videoModal.hidden = false;
+  }
+  function closeVideo(){
+    videoFrame.innerHTML = '';
+    videoModal.hidden = true;
+  }
+  videoClose.addEventListener('click', closeVideo);
+  videoBackdrop.addEventListener('click', closeVideo);
+
+  function openImage(src, caption){
+    imageModalImg.src = src;
+    imageModalImg.alt = caption;
+    imageModalCaption.textContent = caption;
+    imageModal.hidden = false;
+  }
+  function closeImage(){
+    imageModal.hidden = true;
+  }
+  imageClose.addEventListener('click', closeImage);
+  imageBackdrop.addEventListener('click', closeImage);
+
+  document.addEventListener('keydown', e=>{ if(e.key === 'Escape'){ closeVideo(); closeImage(); } });
+
+  document.getElementById('stat-total').textContent = CATALOG.length;
+  document.getElementById('stat-cats').textContent = Object.keys(CATEGORY_LABELS).length;
+  const withMedia = CATALOG.filter(m=>m.img || m.yt).length;
+  console.log('Máquinas con imagen o vídeo:', withMedia, '/', CATALOG.length);
+
+  let activeCat = 'all';
+  let query = '';
+
+  function buildChips(){
+    const all = document.createElement('button');
+    all.className = 'chip active';
+    all.textContent = 'Todas';
+    all.dataset.cat = 'all';
+    chipsEl.appendChild(all);
+    Object.entries(CATEGORY_LABELS).forEach(([key, label])=>{
+      const count = CATALOG.filter(m=>m.cat===key).length;
+      const b = document.createElement('button');
+      b.className = 'chip';
+      b.dataset.cat = key;
+      b.textContent = label + ' (' + count + ')';
+      chipsEl.appendChild(b);
+    });
+    chipsEl.addEventListener('click', (e)=>{
+      const btn = e.target.closest('.chip');
+      if(!btn) return;
+      activeCat = btn.dataset.cat;
+      [...chipsEl.children].forEach(c=>c.classList.toggle('active', c===btn));
+      render();
+    });
+  }
+
+  function matches(m){
+    if(activeCat !== 'all' && m.cat !== activeCat) return false;
+    if(!query) return true;
+    const hay = (m.model + ' ' + m.tagline + ' ' + m.desc + ' ' +
+      m.badges.join(' ') + ' ' + m.specs.map(s=>s.join(' ')).join(' ')).toLowerCase();
+    return hay.includes(query);
+  }
+
+  function cardHTML(m){
+    const badges = m.badges.map(b=>`<span class="badge">${b}</span>`).join('');
+    const specs = m.specs.map(([k,v])=>`<div class="spec"><dt>${k}</dt><dd>${v}</dd></div>`).join('');
+    const media = m.img
+      ? `<div class="card-media">
+          <img src="${m.img}" alt="${m.model}" loading="lazy" onerror="this.closest('.card-media').classList.add('no-img'); this.remove();">
+          ${m.yt ? `<button class="play-btn" data-yt="${m.yt}"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>Ver en vídeo</button>` : ''}
+        </div>`
+      : `<div class="card-media no-img">${m.yt ? `<button class="play-btn" data-yt="${m.yt}"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>Ver en vídeo</button>` : ''}</div>`;
+    return `<article class="card">
+      ${media}
+      <div class="card-body">
+        <div>
+          <div class="card-model">${m.model}</div>
+          <div class="card-tagline">${m.tagline}</div>
+        </div>
+        <div class="card-desc">${m.desc}</div>
+        <div class="badge-row">${badges}</div>
+        <dl class="spec-table">${specs}</dl>
+      </div>
+    </article>`;
+  }
+
+  function render(){
+    query = searchEl.value.trim().toLowerCase();
+    const filtered = CATALOG.filter(matches);
+    countEl.textContent = filtered.length + (filtered.length===1 ? ' resultado' : ' resultados');
+
+    if(filtered.length === 0){
+      mainEl.innerHTML = `<div class="empty-state">No se ha encontrado ninguna máquina con ese criterio.</div>`;
+      return;
+    }
+
+    const cats = activeCat === 'all' ? Object.keys(CATEGORY_LABELS) : [activeCat];
+    let html = '';
+    cats.forEach(cat=>{
+      const items = filtered.filter(m=>m.cat===cat);
+      if(items.length === 0) return;
+      html += `<section class="cat-section">
+        <div class="cat-head">
+          <h2>${CATEGORY_LABELS[cat]}</h2>
+          <span class="cat-count">${items.length} ${items.length===1?'máquina':'máquinas'}</span>
+        </div>
+        <div class="grid">${items.map(cardHTML).join('')}</div>
+      </section>`;
+    });
+    mainEl.innerHTML = html;
+  }
+
+  mainEl.addEventListener('click', (e)=>{
+    const playBtn = e.target.closest('.play-btn');
+    if(playBtn){ openVideo(playBtn.dataset.yt); return; }
+    const img = e.target.closest('.card-media img');
+    if(img){ openImage(img.src, img.alt); return; }
+  });
+
+  searchEl.addEventListener('input', render);
+  buildChips();
+  render();
+})();
+</script>
