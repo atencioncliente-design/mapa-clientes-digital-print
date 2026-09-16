@@ -1,0 +1,17 @@
+{
+  "name": "Mapa de Clientes v3 · Digital Print Maquinaria Gráfica",
+  "short_name": "Mapa DP v3",
+  "description": "Mapa interactivo y Tablero de control de Digital Print Maquinaria Gráfica.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#ffffff",
+  "theme_color": "#A6192E",
+  "lang": "es",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
