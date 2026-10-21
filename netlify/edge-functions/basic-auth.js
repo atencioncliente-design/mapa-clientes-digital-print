@@ -3,20 +3,12 @@
 // credenciales con su propio cuadro de diálogo, no hace falta ninguna
 // pantalla de login aparte. Se ejecuta antes que nada, en el borde de red
 // de Netlify, así que ni siquiera llega a servirse un archivo sin login.
+//
+// Permisos (usuarios en ../shared/usuarios.js):
+//  - usuarios del mapa: todo, salvo el tablero (/v3/), que es solo de TABLERO.
+//  - usuarios solo-Rumbo: únicamente /rumbo/ y lo que Rumbo necesita leer.
 
-const USERS = {
-  "marc": "digitalprint2026",
-  "aurelio": "digitalprint2026",
-  "santi": "digitalprint2026",
-  "santic": "digitalprint2026",
-  "vicente": "digitalprint2026",
-  "juanfran": "digitalprint2026",
-  "cristian": "digitalprint2026",
-  "ivan": "digitalprint2026",
-  "salva": "digitalprint2026",
-  "javi": "digitalprint2026",
-  "comercial": "digitalprint2026"
-};
+import { checkAuth, TABLERO } from "../shared/usuarios.js";
 
 function unauthorized() {
   return new Response("Acceso restringido. Introduce tu usuario y contraseña de Digital Print.", {
@@ -28,27 +20,35 @@ function unauthorized() {
   });
 }
 
-export default async (request, context) => {
-  const auth = request.headers.get("authorization") || "";
-  const [scheme, encoded] = auth.split(" ");
+function forbidden() {
+  return new Response("No tienes acceso a esta parte.", { status: 403, headers: { "content-type": "text/plain; charset=utf-8" } });
+}
 
-  if (scheme === "Basic" && encoded) {
-    try {
-      const decoded = atob(encoded);
-      const sep = decoded.indexOf(":");
-      if (sep !== -1) {
-        const user = decoded.slice(0, sep).trim().toLowerCase();
-        const pass = decoded.slice(sep + 1);
-        if (USERS[user] && USERS[user] === pass) {
-          return context.next();
-        }
-      }
-    } catch (e) {
-      // credenciales mal formadas -> tratar como no autenticado
-    }
+// Lo único que puede pedir un usuario solo-Rumbo
+function rumboAllowed(url, method) {
+  const p = url.pathname;
+  if (p === "/rumbo" || p.startsWith("/rumbo/")) return true;
+  if (p === "/.netlify/functions/rumbo" || p === "/.netlify/functions/odoo") return true;
+  if (method === "GET" && p === "/data/data.json") return true;
+  if (method === "GET" && p === "/.netlify/functions/store" && url.searchParams.get("key") === "hidden") return true;
+  return false;
+}
+
+export default async (request, context) => {
+  const auth = checkAuth(request.headers.get("authorization"));
+  if (!auth) return unauthorized();
+
+  const url = new URL(request.url);
+  if (auth.role === "rumbo") {
+    if (rumboAllowed(url, request.method)) return context.next();
+    if (url.pathname === "/" || url.pathname === "/index.html") return Response.redirect(new URL("/rumbo/", url), 302);
+    return forbidden();
   }
 
-  return unauthorized();
+  // el tablero de control (v3) es privado
+  if ((url.pathname === "/v3" || url.pathname.startsWith("/v3/")) && !TABLERO.includes(auth.user)) return forbidden();
+
+  return context.next();
 };
 
 export const config = { path: "/*" };

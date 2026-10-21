@@ -10,8 +10,10 @@
 // día) es más que suficiente; no hay fusión de cambios en paralelo.
 
 import { getStore } from "@netlify/blobs";
+import { checkAuth, TABLERO } from "../shared/usuarios.js";
 
 const ALLOWED_KEYS = new Set(["zones", "trips", "hidden", "manualGeo", "checkins", "board"]);
+const deny = () => new Response(JSON.stringify({ error: "sin acceso" }), { status: 403, headers: { "content-type": "application/json; charset=utf-8" } });
 
 export default async (req) => {
   const url = new URL(req.url);
@@ -23,6 +25,12 @@ export default async (req) => {
       headers: { "content-type": "application/json; charset=utf-8" }
     });
   }
+
+  // permisos: solo-Rumbo únicamente lee "hidden"; el tablero ("board") es solo de TABLERO
+  const auth = checkAuth(req.headers.get("authorization"));
+  if (!auth) return deny();
+  if (auth.role === "rumbo" && !(key === "hidden" && req.method === "GET")) return deny();
+  if (key === "board" && !TABLERO.includes(auth.user)) return deny();
 
   const store = getStore("dp-mapa");
 

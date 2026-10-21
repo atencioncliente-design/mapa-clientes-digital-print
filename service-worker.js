@@ -2,7 +2,7 @@
    tras la primera visita. Los datos (data/data.json) se intentan refrescar
    por red primero y si no hay conexión se sirve la última copia guardada. */
 
-var CACHE_NAME = "dp-mapa-v2";
+var CACHE_NAME = "dp-mapa-v3";
 var APP_SHELL = [
   "./",
   "./index.html",
@@ -54,6 +54,8 @@ self.addEventListener("fetch", function (event) {
   if (req.method !== "GET") return;
 
   var url = new URL(req.url);
+  // Rumbo (armador de viajes) y las funciones de Netlify van siempre por red
+  if (url.pathname.indexOf("/rumbo") === 0 || url.pathname.indexOf("/.netlify/") === 0) return;
   var isData = url.pathname.indexOf("/data/") !== -1;
 
   if (isData) {
