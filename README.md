@@ -64,15 +64,14 @@ te digo exactamente qué archivos tocaron.
 
 El sitio entero (mapa, datos, todo) pide usuario y contraseña antes de
 enseñar nada — es el cuadro de login que pone el propio navegador, no hay
-pantalla de por medio. Usuarios dados de alta, todos con la misma
-contraseña `digitalprint2026`:
+pantalla de por medio. Usuarios dados de alta:
 
-Marc · Aurelio · Santi · SantiC · Vicente · Juanfran · Cristian · Ivan ·
-Salva · Javi · Comercial
+- Mapa (y Rumbo), contraseña `digitalprint2026`: Aurelio · Victor
+- Solo Rumbo: Alonso
+- Tablero (/v3/): solo Aurelio
 
-Para añadir, quitar o cambiar contraseñas de alguien, se edita la lista
-`USERS` al principio de `netlify/edge-functions/basic-auth.js` y se vuelve
-a publicar. No es un sistema de "cuentas" de verdad (no hay recuperar
+Para añadir, quitar o cambiar contraseñas de alguien, se editan las listas
+de `netlify/shared/usuarios.js` y se vuelve a publicar. No es un sistema de "cuentas" de verdad (no hay recuperar
 contraseña, ni saber quién es quién dentro de la app) — es justo lo que
 pediste: una puerta sencilla con estos usuarios fijos, nada más.
 

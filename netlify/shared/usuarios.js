@@ -6,7 +6,8 @@
 //  RUMBO_ADMINS → ven el listado de viajes armados en Rumbo (triple clic en el logo).
 
 export const USERS = {
-  "aurelio": "digitalprint2026"
+  "aurelio": "digitalprint2026",
+  "victor": "digitalprint2026"
 };
 
 export const RUMBO_USERS = {
