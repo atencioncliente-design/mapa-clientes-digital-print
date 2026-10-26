@@ -66,9 +66,11 @@ El sitio entero (mapa, datos, todo) pide usuario y contraseña antes de
 enseñar nada — es el cuadro de login que pone el propio navegador, no hay
 pantalla de por medio. Usuarios dados de alta:
 
-- Mapa (y Rumbo), contraseña `digitalprint2026`: Aurelio · Victor
+- Mapa (y Rumbo), contraseña `digitalprint2026`: Aurelio · Victor · Santi ·
+  SantiC · Marc · Salva · Javi
+- Ven todo (además tablero /v3/ y listado de viajes de Rumbo): Aurelio ·
+  Victor · Salva · Javi · Santi
 - Solo Rumbo: Alonso
-- Tablero (/v3/): solo Aurelio
 
 Para añadir, quitar o cambiar contraseñas de alguien, se editan las listas
 de `netlify/shared/usuarios.js` y se vuelve a publicar. No es un sistema de "cuentas" de verdad (no hay recuperar

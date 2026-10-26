@@ -7,16 +7,21 @@
 
 export const USERS = {
   "aurelio": "digitalprint2026",
-  "victor": "digitalprint2026"
+  "victor": "digitalprint2026",
+  "santi": "digitalprint2026",
+  "santic": "digitalprint2026",
+  "marc": "digitalprint2026",
+  "salva": "digitalprint2026",
+  "javi": "digitalprint2026"
 };
 
 export const RUMBO_USERS = {
   "alonso": "8j5t9bf3nb"
 };
 
-export const TABLERO = ["aurelio"];
+export const TABLERO = ["aurelio", "victor", "salva", "javi", "santi"];
 
-export const RUMBO_ADMINS = ["aurelio"];
+export const RUMBO_ADMINS = ["aurelio", "victor", "salva", "javi", "santi"];
 
 // Devuelve {user, role} con role = "mapa" | "rumbo", o null si las credenciales no valen.
 export function checkAuth(header) {
