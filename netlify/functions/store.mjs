@@ -12,7 +12,7 @@
 import { getStore } from "@netlify/blobs";
 import { checkAuth, TABLERO } from "../shared/usuarios.js";
 
-const ALLOWED_KEYS = new Set(["zones", "trips", "hidden", "manualGeo", "checkins", "board"]);
+const ALLOWED_KEYS = new Set(["zones", "trips", "hidden", "manualGeo", "checkins", "board", "pizarra"]);
 const deny = () => new Response(JSON.stringify({ error: "sin acceso" }), { status: 403, headers: { "content-type": "application/json; charset=utf-8" } });
 
 export default async (req) => {
@@ -26,11 +26,11 @@ export default async (req) => {
     });
   }
 
-  // permisos: solo-Rumbo únicamente lee "hidden"; el tablero ("board") es solo de TABLERO
+  // permisos: solo-Rumbo únicamente lee "hidden"; el tablero ("board") y la pizarra son solo de TABLERO
   const auth = checkAuth(req.headers.get("authorization"));
   if (!auth) return deny();
   if (auth.role === "rumbo" && !(key === "hidden" && req.method === "GET")) return deny();
-  if (key === "board" && !TABLERO.includes(auth.user)) return deny();
+  if ((key === "board" || key === "pizarra") && !TABLERO.includes(auth.user)) return deny();
 
   const store = getStore("dp-mapa");
 

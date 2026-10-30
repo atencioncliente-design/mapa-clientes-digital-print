@@ -22,6 +22,13 @@
     "salva": "#4338CA", "javi": "#0D9488", "comercial": "#6B7280"
   };
   var PALETTE = ["#2563EB", "#059669", "#D97706", "#7C3AED", "#0891B2", "#DB2777", "#65A30D", "#EA580C", "#4338CA", "#0D9488"];
+  // Colores de fondo para pendientes y tarjetas: tonos suaves para que el texto se siga leyendo.
+  var ROW_COLORS = [
+    { bg: "", nombre: "Sin color" },
+    { bg: "#FECACA", nombre: "Rojo" }, { bg: "#FED7AA", nombre: "Naranja" }, { bg: "#FEF08A", nombre: "Amarillo" },
+    { bg: "#BBF7D0", nombre: "Verde" }, { bg: "#BFDBFE", nombre: "Azul" }, { bg: "#DDD6FE", nombre: "Morado" },
+    { bg: "#FBCFE8", nombre: "Rosa" }, { bg: "#D1D5DB", nombre: "Gris" }
+  ];
 
   var DEFAULT_COLUMNS = [
     { id: "centro", nombre: "Madrid" },
@@ -38,7 +45,9 @@
     currentUser: null,
     techFilter: new Set(),
     searchTerm: "",
-    modalCtx: null
+    modalCtx: null,
+    drag: null,
+    clipboard: null
   };
 
   /* ---------------- utils ---------------- */
@@ -69,6 +78,28 @@
     return '<div class="bc-tec">' + names.map(function (n) {
       return '<span class="tec-tag" style="--tc:' + techColor(n) + '">' + escapeHtml(n) + "</span>";
     }).join("") + "</div>";
+  }
+
+  function swatchesHtml(id, selected) {
+    return '<div class="board-swatches" id="' + id + '">' + ROW_COLORS.map(function (c) {
+      return '<button type="button" class="board-swatch' + ((selected || "") === c.bg ? " active" : "") + (c.bg ? "" : " is-none") +
+        '" data-color="' + c.bg + '" title="' + c.nombre + '" style="background:' + (c.bg || "#fff") + '"></button>';
+    }).join("") + "</div>";
+  }
+
+  function attachSwatches(box, onPick) {
+    box.querySelectorAll(".board-swatch").forEach(function (b) {
+      b.addEventListener("click", function (e) {
+        e.stopPropagation();
+        box.querySelectorAll(".board-swatch").forEach(function (x) { x.classList.toggle("active", x === b); });
+        if (onPick) onPick(b.dataset.color);
+      });
+    });
+  }
+
+  function readSwatch(box) {
+    var a = box.querySelector(".board-swatch.active");
+    return a ? a.dataset.color : "";
   }
 
   function getMonday(d) {
@@ -187,6 +218,8 @@
     });
     document.getElementById("view-tablero").hidden = view !== "tablero";
     document.getElementById("view-mapa").hidden = view !== "mapa";
+    document.getElementById("view-pizarra").hidden = view !== "pizarra";
+    if (view === "pizarra" && window.DPPizarra) window.DPPizarra.show();
     var searchWrap = document.getElementById("mapa-search-wrap");
     if (searchWrap) searchWrap.style.display = view === "mapa" ? "" : "none";
     if (view === "mapa") {
@@ -219,6 +252,7 @@
       '<button id="board-print" class="btn-primary btn-small">🖨️ Imprimir semana</button>' +
       "</div>" +
       "</div>" +
+      '<div class="board-dnd-hint">Arrastra una tarjeta para <strong>moverla</strong> · mantén <kbd>Ctrl</kbd> al soltar para <strong>copiarla</strong> · o <kbd>Ctrl</kbd>+<kbd>C</kbd> sobre una tarjeta y <kbd>Ctrl</kbd>+<kbd>V</kbd> sobre otro día · los pendientes también se arrastran a un día</div>' +
       '<div class="board-grid" id="board-grid"></div>' +
       '<div id="board-print-table"></div>' +
       '<div class="board-backlog">' +
@@ -234,6 +268,7 @@
     document.getElementById("board-add-col").addEventListener("click", addColumn);
     document.getElementById("board-print").addEventListener("click", printWeek);
     document.getElementById("board-backlog-add").addEventListener("click", function () { openBacklogModal(null); });
+    initDragAndPaste();
 
     var search = document.getElementById("board-search");
     var deb;
@@ -294,7 +329,9 @@
       grid.appendChild(h);
     });
 
-    for (var i = 0; i < 7; i++) {
+    // forEach (no for+var): cada botón "+ añadir" debe quedarse con SU día;
+    // con var todos acababan apuntando al último (domingo).
+    [0, 1, 2, 3, 4, 5, 6].forEach(function (i) {
       var date = addDays(state.weekStart, i);
       var iso = isoDate(date);
       var isToday = iso === todayIso();
@@ -320,7 +357,7 @@
 
         grid.appendChild(cell);
       });
-    }
+    });
 
     grid.querySelectorAll('[data-act="rename"]').forEach(function (b) {
       b.addEventListener("click", function () { renameColumn(b.dataset.col); });
@@ -330,9 +367,21 @@
     });
   }
 
+  function cloneEntry(src, date, colId) {
+    return {
+      id: uid(), date: date, colId: colId,
+      clienteId: src.clienteId != null ? src.clienteId : null,
+      cliente: src.cliente || "", localidad: src.localidad || "", tecnicos: src.tecnicos || "",
+      observacion: src.observacion || "", nota: "", color: src.color || "", hecho: false,
+      creadoPor: state.currentUser, ts: Date.now()
+    };
+  }
+
   function renderCard(entry) {
     var card = document.createElement("div");
-    card.className = "board-card" + (entry.hecho ? " is-done" : "");
+    card.className = "board-card" + (entry.hecho ? " is-done" : "") + (entry.color ? " has-color" : "");
+    if (entry.color) card.style.background = entry.color;
+    card.draggable = true;
     card.dataset.id = entry.id;
     var searchBlob = normalize([entry.cliente, entry.localidad, entry.tecnicos, entry.observacion].join(" "));
     card.dataset.search = searchBlob;
@@ -363,7 +412,102 @@
       renderAll();
     });
     card.addEventListener("click", function () { openEntryModal({ entry: entry }); });
+    card.addEventListener("dragstart", function (e) {
+      state.drag = { type: "entry", id: entry.id };
+      e.dataTransfer.effectAllowed = "copyMove";
+      e.dataTransfer.setData("text/plain", entry.cliente || "");
+      setTimeout(function () { card.classList.add("is-dragging"); }, 0);
+    });
+    card.addEventListener("dragend", function () { card.classList.remove("is-dragging"); clearDrag(); });
     return card;
+  }
+
+  /* ---------------- arrastrar / copiar-pegar ----------------
+     Arrastrar una tarjeta = moverla a otro día/columna.
+     Ctrl (o Alt) mientras se arrastra = copiarla (deja la original).
+     Ctrl+C con el ratón encima de una tarjeta y Ctrl+V encima de un día = pegar copia.
+     Los pendientes también se pueden arrastrar a un día para asignarlos. */
+
+  function clearDrag() {
+    state.drag = null;
+    document.querySelectorAll(".board-day-cell.is-drop, .board-day-cell.is-drop-copy").forEach(function (c) {
+      c.classList.remove("is-drop", "is-drop-copy");
+    });
+  }
+
+  function isCopyGesture(e) { return e.ctrlKey || e.altKey || e.metaKey; }
+
+  function initDragAndPaste() {
+    var grid = document.getElementById("board-grid");
+
+    grid.addEventListener("dragover", function (e) {
+      var cell = e.target.closest(".board-day-cell");
+      if (!cell || !state.drag) return;
+      e.preventDefault();
+      var copy = state.drag.type === "entry" && isCopyGesture(e);
+      e.dataTransfer.dropEffect = copy ? "copy" : "move";
+      document.querySelectorAll(".board-day-cell.is-drop").forEach(function (c) { if (c !== cell) c.classList.remove("is-drop", "is-drop-copy"); });
+      cell.classList.add("is-drop");
+      cell.classList.toggle("is-drop-copy", copy);
+    });
+
+    grid.addEventListener("drop", function (e) {
+      var cell = e.target.closest(".board-day-cell");
+      if (!cell || !state.drag) return;
+      e.preventDefault();
+      var drag = state.drag;
+      var date = cell.dataset.date, colId = cell.dataset.col;
+      if (drag.type === "entry") {
+        var src = state.entries.find(function (x) { return x.id === drag.id; });
+        if (!src) return;
+        if (isCopyGesture(e)) {
+          state.entries.push(cloneEntry(src, date, colId));
+          toast("Copiado a " + shortLabel(new Date(date + "T00:00:00")));
+        } else {
+          if (src.date === date && src.colId === colId) { clearDrag(); return; }
+          src.date = date; src.colId = colId;
+        }
+      } else if (drag.type === "backlog") {
+        var item = state.backlog.find(function (x) { return x.id === drag.id; });
+        if (!item) return;
+        state.entries.push(cloneEntry(backlogToEntryFields(item), date, colId));
+        state.backlog = state.backlog.filter(function (x) { return x.id !== item.id; });
+        toast("Pendiente asignado a " + shortLabel(new Date(date + "T00:00:00")));
+      }
+      clearDrag();
+      persist();
+      renderAll();
+    });
+
+    // Copiar / pegar con teclado según dónde esté el ratón.
+    var hoverCard = null, hoverCell = null;
+    grid.addEventListener("mouseover", function (e) {
+      hoverCard = e.target.closest(".board-card");
+      hoverCell = e.target.closest(".board-day-cell");
+    });
+    grid.addEventListener("mouseleave", function () { hoverCard = null; hoverCell = null; });
+
+    document.addEventListener("keydown", function (e) {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      if (document.getElementById("view-tablero").hidden) return;
+      if (!document.getElementById("modal-backdrop").hidden) return;
+      var t = e.target;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+      var key = e.key.toLowerCase();
+      if (key === "c" && hoverCard) {
+        var src = state.entries.find(function (x) { return x.id === hoverCard.dataset.id; });
+        if (!src) return;
+        state.clipboard = src;
+        e.preventDefault();
+        toast("Copiado «" + (src.cliente || "entrada") + "». Pon el ratón sobre otro día y pulsa Ctrl+V.");
+      } else if (key === "v" && hoverCell && state.clipboard) {
+        e.preventDefault();
+        state.entries.push(cloneEntry(state.clipboard, hoverCell.dataset.date, hoverCell.dataset.col));
+        persist();
+        renderAll();
+        toast("Pegado en " + shortLabel(new Date(hoverCell.dataset.date + "T00:00:00")));
+      }
+    });
   }
 
   function renderBacklog() {
@@ -375,22 +519,49 @@
     box.innerHTML = "";
     var head = document.createElement("div");
     head.className = "board-backlog-row board-backlog-head";
-    head.innerHTML = "<div></div><div>Localidad</div><div>Cliente</div><div>Observación</div><div></div>";
+    head.innerHTML = "<div></div><div>Localidad</div><div>Cliente</div><div>Técnico</div><div>Observación</div><div></div>";
     box.appendChild(head);
 
     state.backlog.forEach(function (item) {
       var row = document.createElement("div");
-      row.className = "board-backlog-row" + (item.hecho ? " is-done" : "");
-      row.dataset.search = normalize([item.cliente, item.localidad, item.observacion].join(" "));
+      row.className = "board-backlog-row" + (item.hecho ? " is-done" : "") + (item.color ? " has-color" : "");
+      if (item.color) row.style.background = item.color;
+      row.draggable = true;
+      row.title = "Arrástralo a un día del tablero para asignarlo";
+      row.dataset.search = normalize([item.cliente, item.localidad, item.tecnicos, item.observacion].join(" "));
       row.innerHTML =
         '<label class="bc-check"><input type="checkbox" ' + (item.hecho ? "checked" : "") + "></label>" +
         '<div>' + escapeHtml(item.localidad || "") + "</div>" +
         '<div>' + escapeHtml(item.cliente || "") + "</div>" +
+        '<div>' + (techTags(item.tecnicos) || '<span class="board-backlog-none">—</span>') + "</div>" +
         '<div>' + escapeHtml(item.observacion || "") + "</div>" +
-        '<div class="board-backlog-actions"><button class="btn-secondary btn-tiny" data-act="assign">Asignar a semana</button><button class="bc-del" data-act="del" title="Eliminar">×</button></div>';
+        '<div class="board-backlog-actions">' +
+        '<div class="board-color-pop-wrap"><button class="board-color-btn" data-act="color" title="Color de la fila">🎨</button></div>' +
+        '<button class="btn-secondary btn-tiny" data-act="assign">Asignar a semana</button><button class="bc-del" data-act="del" title="Eliminar">×</button></div>';
+
+      row.addEventListener("dragstart", function (e) {
+        state.drag = { type: "backlog", id: item.id };
+        e.dataTransfer.effectAllowed = "copyMove";
+        e.dataTransfer.setData("text/plain", item.cliente || "");
+      });
+      row.addEventListener("dragend", clearDrag);
 
       row.querySelector('input[type=checkbox]').addEventListener("click", function () {
         item.hecho = !item.hecho; persist(); renderBacklog();
+      });
+      row.querySelector('[data-act="color"]').addEventListener("click", function (e) {
+        e.stopPropagation();
+        var wrap = e.currentTarget.parentNode;
+        var open = wrap.querySelector(".board-swatches");
+        closeColorPops();
+        if (open) return;
+        wrap.insertAdjacentHTML("beforeend", swatchesHtml("", item.color));
+        var pop = wrap.querySelector(".board-swatches");
+        pop.classList.add("board-color-pop");
+        attachSwatches(pop, function (color) {
+          item.color = color;
+          persist(); renderBacklog(); applyFilters();
+        });
       });
       row.querySelector('[data-act="assign"]').addEventListener("click", function () { assignBacklogToWeek(item); });
       row.querySelector('[data-act="del"]').addEventListener("click", function () {
@@ -399,12 +570,19 @@
         persist(); renderBacklog();
       });
       row.addEventListener("click", function (e) {
-        if (e.target.closest("button") || e.target.closest("label")) return;
+        if (e.target.closest("button") || e.target.closest("label") || e.target.closest(".board-swatches")) return;
         openBacklogModal(item);
       });
       box.appendChild(row);
     });
   }
+
+  function closeColorPops() {
+    document.querySelectorAll(".board-color-pop").forEach(function (p) { p.remove(); });
+  }
+  document.addEventListener("click", function (e) {
+    if (!e.target.closest(".board-color-pop-wrap")) closeColorPops();
+  });
 
   function applyFilters() {
     var term = state.searchTerm;
@@ -501,6 +679,9 @@
       '<div class="board-form-row"><label>Técnico(s)</label><input type="text" id="bf-tec" list="board-tech-list" placeholder="Ej: Juanfran, Cristian" value="' + escapeHtml(pre.tecnicos || "") + '"></div>' +
       '<div class="board-form-row"><label>Observación</label><textarea id="bf-obs" placeholder="Qué hay que hacer…">' + escapeHtml(pre.observacion || "") + "</textarea></div>" +
       '<div class="board-form-row"><label>Nota extra <span class="board-form-hint">(opcional, para después)</span></label><textarea id="bf-nota" placeholder="Resultado, incidencias, seguimiento…">' + escapeHtml(pre.nota || "") + "</textarea></div>" +
+      '<div class="board-form-row"><label>Color</label>' + swatchesHtml("bf-color", pre.color) + "</div>" +
+      '<div class="board-form-row"><label>Copiar también a <span class="board-form-hint">(misma semana y columna)</span></label>' +
+      '<div class="board-repeat" id="bf-repeat"></div></div>' +
       '<div class="board-form-row checkbox-row"><label><input type="checkbox" id="bf-hecho" ' + (pre.hecho ? "checked" : "") + "> Hecho</label></div>" +
       '<div class="modal-actions">' +
       (entry ? '<button id="bf-delete" class="btn-secondary" style="margin-right:auto">Eliminar</button>' : "") +
@@ -515,6 +696,42 @@
       clienteId = c.id;
     });
     document.getElementById("bf-cliente").addEventListener("input", function () { clienteId = null; });
+    attachSwatches(document.getElementById("bf-color"));
+
+    // Botones L M X J V S D de la semana del día elegido, para repetir la
+    // entrada en varios días de una vez (p. ej. un montaje de lunes a viernes).
+    var repeatBox = document.getElementById("bf-repeat");
+    var repeatSel = new Set();
+    function renderRepeat() {
+      var base = document.getElementById("bf-date").value;
+      if (!base) { repeatBox.innerHTML = ""; return; }
+      var monday = getMonday(new Date(base + "T00:00:00"));
+      repeatBox.innerHTML = "";
+      [0, 1, 2, 3, 4, 5, 6].forEach(function (i) {
+        var iso = isoDate(addDays(monday, i));
+        var b = document.createElement("button");
+        b.type = "button";
+        b.className = "board-repeat-day" + (iso === base ? " is-base" : "") + (repeatSel.has(iso) ? " active" : "");
+        b.textContent = shortLabel(addDays(monday, i));
+        b.disabled = iso === base;
+        b.addEventListener("click", function () {
+          if (repeatSel.has(iso)) repeatSel.delete(iso); else repeatSel.add(iso);
+          b.classList.toggle("active");
+        });
+        repeatBox.appendChild(b);
+      });
+      var all = document.createElement("button");
+      all.type = "button";
+      all.className = "btn-secondary btn-tiny";
+      all.textContent = "Lun–Vie";
+      all.addEventListener("click", function () {
+        [0, 1, 2, 3, 4].forEach(function (i) { var iso = isoDate(addDays(monday, i)); if (iso !== base) repeatSel.add(iso); });
+        renderRepeat();
+      });
+      repeatBox.appendChild(all);
+    }
+    document.getElementById("bf-date").addEventListener("change", function () { repeatSel.clear(); renderRepeat(); });
+    renderRepeat();
 
     document.getElementById("bf-cancel").addEventListener("click", closeModal);
     if (entry) {
@@ -534,6 +751,7 @@
         tecnicos: document.getElementById("bf-tec").value.trim(),
         observacion: document.getElementById("bf-obs").value.trim(),
         nota: document.getElementById("bf-nota").value.trim(),
+        color: readSwatch(document.getElementById("bf-color")),
         hecho: document.getElementById("bf-hecho").checked
       };
       if (!data.cliente && !data.observacion) { toast("Escribe al menos un cliente o una observación."); return; }
@@ -545,6 +763,11 @@
         data.ts = Date.now();
         state.entries.push(data);
       }
+      repeatSel.forEach(function (iso) {
+        if (iso === data.date) return;
+        state.entries.push(cloneEntry(data, iso, data.colId));
+      });
+      if (repeatSel.size) toast("Copiado a " + repeatSel.size + " día(s) más.");
       if (state.modalCtx.backlogSourceId) {
         state.backlog = state.backlog.filter(function (x) { return x.id !== state.modalCtx.backlogSourceId; });
       }
@@ -566,7 +789,9 @@
       '<input type="text" id="pf-cliente" placeholder="Escribe 2-3 letras o el nombre libre…" value="' + escapeHtml(item ? item.cliente : "") + '" autocomplete="off">' +
       '<div class="board-suggest-list" id="pf-suggest" hidden></div></div>' +
       '<div class="board-form-row"><label>Localidad</label><input type="text" id="pf-loc" placeholder="Ciudad (provincia) o CP" value="' + escapeHtml(item ? item.localidad : "") + '"></div>' +
+      '<div class="board-form-row"><label>Técnico(s)</label><input type="text" id="pf-tec" list="board-tech-list" placeholder="Ej: Juanfran, Cristian" value="' + escapeHtml(item ? item.tecnicos : "") + '"></div>' +
       '<div class="board-form-row"><label>Observación</label><textarea id="pf-obs" placeholder="Qué hay pendiente…">' + escapeHtml(item ? item.observacion : "") + "</textarea></div>" +
+      '<div class="board-form-row"><label>Color</label>' + swatchesHtml("pf-color", item ? item.color : "") + "</div>" +
       '<div class="modal-actions">' +
       (item ? '<button id="pf-delete" class="btn-secondary" style="margin-right:auto">Eliminar</button>' : "") +
       '<button id="pf-cancel" class="btn-secondary">Cancelar</button>' +
@@ -580,6 +805,7 @@
       clienteId = c.id;
     });
     document.getElementById("pf-cliente").addEventListener("input", function () { clienteId = null; });
+    attachSwatches(document.getElementById("pf-color"));
 
     document.getElementById("pf-cancel").addEventListener("click", closeModal);
     if (item) {
@@ -594,7 +820,9 @@
         clienteId: clienteId,
         cliente: document.getElementById("pf-cliente").value.trim(),
         localidad: document.getElementById("pf-loc").value.trim(),
-        observacion: document.getElementById("pf-obs").value.trim()
+        tecnicos: document.getElementById("pf-tec").value.trim(),
+        observacion: document.getElementById("pf-obs").value.trim(),
+        color: readSwatch(document.getElementById("pf-color"))
       };
       if (!data.cliente && !data.observacion) { toast("Escribe al menos un cliente o una observación."); return; }
       if (item) {
@@ -616,8 +844,15 @@
       date: isoDate(state.weekStart),
       colId: state.columns[0] ? state.columns[0].id : null,
       backlogSourceId: item.id,
-      prefill: { cliente: item.cliente, localidad: item.localidad, observacion: item.observacion, clienteId: item.clienteId }
+      prefill: backlogToEntryFields(item)
     });
+  }
+
+  function backlogToEntryFields(item) {
+    return {
+      cliente: item.cliente, localidad: item.localidad, observacion: item.observacion,
+      clienteId: item.clienteId, tecnicos: item.tecnicos || "", color: item.color || ""
+    };
   }
 
   function closeModal() {

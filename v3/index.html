@@ -16,6 +16,7 @@
 <link rel="stylesheet" href="/js/vendor/MarkerCluster.Default.css">
 <link rel="stylesheet" href="/css/style.css">
 <link rel="stylesheet" href="css/board.css">
+<link rel="stylesheet" href="css/pizarra.css">
 </head>
 <body>
 
@@ -39,6 +40,10 @@
         <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M12 2C8.14 2 5 5.14 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.86-3.14-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg>
         <span>Mapa</span>
       </button>
+      <button class="view-switch-btn" data-view="pizarra" role="tab">
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M21 3H3a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h7.6l-2.5 4h2.4l2.5-4 2.5 4h2.4l-2.5-4H21a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1zm-1 12H4V5h16v10zM6 12.6l3.3-3.3 2.2 2.2 3.8-3.8 1.4 1.4-5.2 5.2-2.2-2.2-1.9 1.9z"/></svg>
+        <span>Pizarra</span>
+      </button>
     </div>
 
     <div class="header-search" id="mapa-search-wrap">
@@ -55,6 +60,11 @@
   <!-- ============ VISTA: TABLERO DE CONTROL ============ -->
   <div id="view-tablero" class="app-view">
     <div id="board-root"></div>
+  </div>
+
+  <!-- ============ VISTA: PIZARRA ============ -->
+  <div id="view-pizarra" class="app-view" hidden>
+    <div id="pizarra-root"></div>
   </div>
 
   <!-- ============ VISTA: MAPA ============ -->
@@ -196,5 +206,6 @@
 <script src="/js/vendor/leaflet.markercluster.js"></script>
 <script src="js/app-map.js"></script>
 <script src="js/board.js"></script>
+<script src="js/pizarra.js"></script>
 </body>
 </html>

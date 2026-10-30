@@ -136,10 +136,54 @@
 .board-backlog-hint { font-size: 11.5px; font-weight: 500; color: var(--gray-500); text-transform: none; }
 .board-backlog-table { background: #fff; border: 1px solid var(--gray-200); border-radius: var(--radius); overflow-x: auto; }
 .board-backlog-row {
-  display: grid; grid-template-columns: 30px 1fr 1fr 2fr auto; gap: 10px; align-items: center;
+  display: grid; grid-template-columns: 30px 1fr 1.1fr .8fr 2fr auto; gap: 10px; align-items: center;
   padding: 8px 12px; border-bottom: 1px solid var(--gray-100); font-size: 12.5px; cursor: pointer;
-  min-width: 560px;
+  min-width: 720px;
 }
+.board-backlog-row.has-color { border-bottom-color: rgba(0,0,0,.08); }
+.board-backlog-row .bc-tec { margin-bottom: 0; }
+.board-backlog-none { color: var(--gray-300); }
+.board-color-pop-wrap { position: relative; }
+.board-color-btn {
+  border: 1px solid var(--gray-300); background: #fff; border-radius: 50%; width: 28px; height: 28px;
+  cursor: pointer; font-size: 13px; line-height: 1; padding: 0;
+}
+.board-color-btn:hover { border-color: var(--red); }
+.board-color-pop {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; background: #fff;
+  border: 1px solid var(--gray-300); border-radius: 10px; box-shadow: var(--shadow-lg);
+  padding: 8px; width: 168px;
+}
+
+/* ---------- Selector de color (modal y popover) ---------- */
+.board-swatches { display: flex; flex-wrap: wrap; gap: 6px; }
+.board-swatch {
+  width: 26px; height: 26px; border-radius: 7px; border: 1px solid rgba(0,0,0,.15); cursor: pointer; padding: 0;
+}
+.board-swatch.is-none { background: linear-gradient(135deg, #fff 45%, var(--red) 45%, var(--red) 55%, #fff 55%) !important; }
+.board-swatch.active { outline: 2px solid var(--gray-900); outline-offset: 2px; }
+
+/* ---------- Copiar a otros días (modal) ---------- */
+.board-repeat { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+.board-repeat-day {
+  border: 1px solid var(--gray-300); background: #fff; border-radius: 14px; padding: 4px 9px;
+  font-size: 11.5px; font-weight: 600; cursor: pointer; color: var(--gray-700);
+}
+.board-repeat-day.active { background: var(--red); border-color: var(--red); color: #fff; }
+.board-repeat-day.is-base { background: var(--gray-200); color: var(--gray-500); cursor: default; }
+
+/* ---------- Arrastrar / soltar ---------- */
+.board-dnd-hint { font-size: 11.5px; color: var(--gray-500); margin: -6px 0 10px; }
+.board-dnd-hint kbd {
+  font-family: inherit; font-size: 10.5px; border: 1px solid var(--gray-300); border-bottom-width: 2px;
+  border-radius: 4px; padding: 0 4px; background: #fff; color: var(--gray-700);
+}
+.board-card[draggable="true"] { cursor: grab; }
+.board-card.is-dragging { opacity: .35; }
+.board-day-cell.is-drop { background: #EEF4FF !important; box-shadow: inset 0 0 0 2px #2563EB; }
+.board-day-cell.is-drop-copy { background: #ECFDF5 !important; box-shadow: inset 0 0 0 2px #059669; }
+.board-day-cell.is-drop-copy::after { content: "+ copiar aquí"; font-size: 11px; font-weight: 700; color: #059669; text-align: center; }
+.board-card.has-color:hover { filter: brightness(.96); }
 .board-backlog-row:last-child { border-bottom: none; }
 .board-backlog-row.board-backlog-head { background: var(--gray-100); font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--gray-700); cursor: default; }
 .board-backlog-row.is-done { opacity: .55; text-decoration: line-through; }
@@ -155,6 +199,7 @@
 
 /* ---------- Impresión ---------- */
 @media print {
+  #view-pizarra, .board-dnd-hint,
   #app-header, .board-toolbar, .board-add-card, .board-col-actions, .board-backlog-add,
   #sidebar-backdrop, #modal-backdrop, #toast, #detail-sheet { display: none !important; }
   #view-mapa { display: none !important; }
