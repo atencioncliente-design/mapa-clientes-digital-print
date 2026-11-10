@@ -879,10 +879,13 @@ function convertBase(arr) {
   const old = Object.fromEntries(BASE.map(c => [c.id, c]));
   const items = arr.filter(c => c.lat && !["PROVEEDOR", "GRUPO PROPIO"].includes(c.clasificacion) && !DESCARTES.test(c.nombre)).map(c => {
     const o = old["b" + c.id] || {};
-    return {id: "b" + c.id, n: o.q ? o.n : String(c.nombre).replace(/^"|"$/g, "").trim(), k: c.clasificacion === "CLIENTE" ? (c.estado === "ACTIVA" ? "c" : "ci") : c.clasificacion === "CARTERA (contactada)" ? "k" : "s",
+    return {id: "b" + c.id, n: o.q ? o.n : String(c.nombre).replace(/^"|"$/g, "").trim(), k: c.clasificacion === "CLIENTE" ? (c.estado === "ACTIVA" ? "c" : "ci") : c.clasificacion === "CARTERA (contactada)" ? "k" : c.clasificacion === "NUEVO" ? "p" : "s",
       ic: IMPRI.test(c.nombre) ? 1 : (o.ic || 0), d: o.d || String(c.direccion || "").replace(/, España$/, ""), m: c.ciudad, pr: c.provincia, t: c.telefono, e: c.email, w: c.web,
-      p: (c.personas || []).filter(p => p.nombre).map(p => [p.nombre, p.cargo, p.telefono]), ct: o.ct, q: o.q || "", nt: o.nt || "", ll: o.ll || [+c.lat, +c.lng], src: "base"}; });
-  const ids = new Set(items.map(c => c.id)); BASE.filter(c => !ids.has(c.id) && c.src !== "base").forEach(c => items.push(c));
+      p: (c.personas || []).filter(p => p.nombre).map(p => [p.nombre, p.cargo, p.telefono]), ct: o.ct, q: o.q || c.actividad || "", nt: o.nt || "", ll: o.ll || [+c.lat, +c.lng], src: "base"}; });
+  // las nuevas de los viajes ya vienen en data.json: no repetir las que Rumbo traía de serie
+  const nk = s => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  const ids = new Set(items.map(c => c.id)), names = new Set(items.map(c => nk(c.n)));
+  BASE.filter(c => !ids.has(c.id) && c.src !== "base" && !names.has(nk(c.n))).forEach(c => items.push(c));
   return items;
 }
 $("#bBase").onclick = () => $("#fBase").click();
@@ -988,9 +991,12 @@ async function initServer() {
   } catch (e) {}
   if (!S.trip.comercial && ME.user) { S.trip.comercial = ME.user.charAt(0).toUpperCase() + ME.user.slice(1); save(); initForm(); }
   try {   // en la web, la base es la del mapa de clientes en directo (sin los clientes ocultos)
-    const [d, hid] = await Promise.all([fetch("/data/data.json", {cache: "no-store"}).then(r => r.ok ? r.json() : null),
-      fetch("/.netlify/functions/store?key=hidden").then(r => r.ok ? r.json() : null).catch(() => null)]);
-    if (d) { const hs = new Set((hid || []).map(String)); const arr = (Array.isArray(d) ? d : Object.values(d)[0]).filter(c => !hs.has(String(c.id)));
+    const [d, hid, imp] = await Promise.all([fetch("/data/data.json", {cache: "no-store"}).then(r => r.ok ? r.json() : null),
+      fetch("/.netlify/functions/store?key=hidden").then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch("/.netlify/functions/store?key=importadas").then(r => r.ok ? r.json() : null).catch(() => null)]);
+    if (d) { const hs = new Set((hid || []).map(String));
+      const base = Array.isArray(d) ? d : Object.values(d)[0];   // + empresas nuevas importadas de PDF de viajes (por Aurelio)
+      const arr = base.concat(Array.isArray(imp) ? imp : []).filter(c => !hs.has(String(c.id)));
       BASEX = {fecha: "en directo", items: convertBase(arr)}; buildDB(); refreshAll(true); }
   } catch (e) {}
 }
@@ -999,5 +1005,6 @@ if (S.trip.zona) map.fitBounds(L.latLng(S.trip.zona.ll).toBounds(S.trip.radio * 
 if (!lsGet(LS)) setTimeout(() => $("#mGuide").classList.add("on"), 400);
 initServer().then(() => { refreshAll(true); if (innerWidth < 700 && S.plan.days.flat().length) { closeModals(); openCalle(); } });
 </script>
+<script src="/js/actualizar.js"></script>
 </body>
 </html>

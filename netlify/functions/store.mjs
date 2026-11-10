@@ -10,9 +10,9 @@
 // día) es más que suficiente; no hay fusión de cambios en paralelo.
 
 import { getStore } from "@netlify/blobs";
-import { checkAuth, TABLERO } from "../shared/usuarios.js";
+import { checkAuth, TABLERO, IMPORTADORES } from "../shared/usuarios.js";
 
-const ALLOWED_KEYS = new Set(["zones", "trips", "hidden", "manualGeo", "checkins", "board", "pizarra"]);
+const ALLOWED_KEYS = new Set(["zones", "trips", "hidden", "manualGeo", "checkins", "board", "pizarra", "importadas"]);
 const deny = () => new Response(JSON.stringify({ error: "sin acceso" }), { status: 403, headers: { "content-type": "application/json; charset=utf-8" } });
 
 export default async (req) => {
@@ -29,8 +29,12 @@ export default async (req) => {
   // permisos: solo-Rumbo únicamente lee "hidden"; el tablero ("board") y la pizarra son solo de TABLERO
   const auth = checkAuth(req.headers.get("authorization"));
   if (!auth) return deny();
-  if (auth.role === "rumbo" && !(key === "hidden" && req.method === "GET")) return deny();
+  if (auth.role === "rumbo" && !((key === "hidden" || key === "importadas") && req.method === "GET")) return deny();
+  // empresas importadas de los PDF de viajes: las ve todo el mundo, solo IMPORTADORES las cambian
+  if (key === "importadas" && req.method !== "GET" && !IMPORTADORES.includes(auth.user)) return deny();
   if ((key === "board" || key === "pizarra") && !TABLERO.includes(auth.user)) return deny();
+  // solo-mapa: puede leer, nunca guardar
+  if (auth.role === "lectura" && req.method !== "GET") return deny();
 
   const store = getStore("dp-mapa");
 

@@ -1,14 +1,18 @@
-/* Service worker: cachea el "app shell" para que el mapa cargue offline
-   tras la primera visita. Los datos (data/data.json) se intentan refrescar
-   por red primero y si no hay conexión se sirve la última copia guardada. */
+/* Service worker: guarda copia de la app para que el mapa cargue sin conexión.
+   Todo lo nuestro (páginas, js, css, datos) va SIEMPRE primero por red, así
+   cada vez que se abre se ve la última versión publicada sin borrar caché;
+   la copia guardada solo se usa si no hay conexión. Las librerías e iconos
+   (que no cambian nunca) sí salen de la copia, para que cargue rápido.
+   La recarga automática de pestañas ya abiertas la hace js/actualizar.js. */
 
-var CACHE_NAME = "dp-mapa-v3";
+var CACHE_NAME = "dp-mapa-v5";
 var APP_SHELL = [
   "./",
   "./index.html",
   "./manifest.webmanifest",
   "./css/style.css",
   "./js/app.js",
+  "./js/actualizar.js",
   "./js/vendor/leaflet.js",
   "./js/vendor/leaflet.css",
   "./js/vendor/leaflet.markercluster.js",
@@ -54,29 +58,30 @@ self.addEventListener("fetch", function (event) {
   if (req.method !== "GET") return;
 
   var url = new URL(req.url);
+  if (url.origin !== self.location.origin) return;
   // Rumbo (armador de viajes) y las funciones de Netlify van siempre por red
   if (url.pathname.indexOf("/rumbo") === 0 || url.pathname.indexOf("/.netlify/") === 0) return;
-  var isData = url.pathname.indexOf("/data/") !== -1;
 
-  if (isData) {
-    // network-first para datos, con fallback a cache
-    event.respondWith(
-      fetch(req).then(function (res) {
-        var copy = res.clone();
-        caches.open(CACHE_NAME).then(function (cache) { cache.put(req, copy); });
-        return res;
-      }).catch(function () { return caches.match(req); })
-    );
+  function guardar(res) {
+    if (res && res.ok) {   // nunca guardar errores (401/403/404) como si fueran la app
+      var copy = res.clone();
+      caches.open(CACHE_NAME).then(function (cache) { cache.put(req, copy); });
+    }
+    return res;
+  }
+
+  var fijo = url.pathname.indexOf("/js/vendor/") !== -1 || url.pathname.indexOf("/icons/") === 0 || url.pathname.indexOf("/images/") === 0;
+  if (fijo) {
+    // librerías, iconos e imágenes: de la copia (no cambian)
+    event.respondWith(caches.match(req).then(function (cached) { return cached || fetch(req).then(guardar); }));
     return;
   }
 
-  // cache-first para el resto del app shell
+  // todo lo demás: red primero (siempre la versión publicada), copia solo sin conexión
   event.respondWith(
-    caches.match(req).then(function (cached) {
-      return cached || fetch(req).then(function (res) {
-        var copy = res.clone();
-        caches.open(CACHE_NAME).then(function (cache) { cache.put(req, copy); });
-        return res;
+    fetch(req).then(guardar).catch(function () {
+      return caches.match(req).then(function (cached) {
+        return cached || (req.mode === "navigate" ? caches.match("./index.html") : undefined) || Response.error();
       });
     })
   );

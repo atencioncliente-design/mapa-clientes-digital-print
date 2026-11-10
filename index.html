@@ -68,6 +68,7 @@
               <div class="chip active" data-estado="">Todas</div>
               <div class="chip" data-estado="ACTIVA">Activas</div>
               <div class="chip" data-estado="DORMIDA">Dormidas</div>
+              <div class="chip" data-estado="NUEVA">Nuevas</div>
             </div>
           </div>
           <div class="filter-row checkbox-row">
@@ -156,6 +157,7 @@
           Ocultar clientes
         </button>
         <button id="btn-hide-manage" class="btn-secondary">Clientes ocultos</button>
+        <button id="btn-import" class="btn-primary" hidden>Importar nuevas</button>
       </div>
 
       <div id="draw-hint" class="floating-hint" hidden>
@@ -201,5 +203,6 @@
 <script src="js/vendor/leaflet.js"></script>
 <script src="js/vendor/leaflet.markercluster.js"></script>
 <script src="js/app.js"></script>
+<script src="js/actualizar.js"></script>
 </body>
 </html>

@@ -8,11 +8,10 @@
 
   var CLASS_COLORS = {
     "CLIENTE": "#A6192E",
-    "PROVEEDOR": "#1A1A1A",
     "CARTERA (contactada)": "#8C8C8C",
     "CARTERA (sin contacto)": "#C9C9C9",
     "SIN CLASIFICAR": "#C9C9C9",
-    "GRUPO PROPIO": "#3B3B3B"
+    "NUEVO": "#2E7D32"
   };
   var DEFAULT_COLOR = "#A6192E";
 
@@ -160,6 +159,7 @@
   }
 
   function apiSet(key, value) {
+    if (state.soloLectura) return; // usuarios solo-mapa no guardan nada compartido
     fetch(API_BASE + "?key=" + key, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -261,14 +261,21 @@
       apiGet("hidden").catch(function () { return null; }),
       apiGet("zones").catch(function () { return null; }),
       fetch("/.netlify/functions/whoami").then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }),
-      apiGet("checkins").catch(function () { return null; })
+      apiGet("checkins").catch(function () { return null; }),
+      apiGet("importadas").catch(function () { return null; })
     ]).then(function (results) {
       var clients = results[0];
+      state.importadas = Array.isArray(results[7]) ? results[7] : [];
+      state.puedeImportar = !!(results[5] && results[5].puedeImportar);
+      if (state.puedeImportar) document.getElementById("btn-import").hidden = false;
+      mergeImportadas(clients, state.importadas);
       state.trips = results[1] != null ? results[1] : loadTripsLocal();
       state.manualGeo = results[2] != null ? results[2] : loadManualGeoLocal();
       state.hiddenIds = new Set(results[3] != null ? results[3] : loadHiddenLocal());
       var remoteZones = results[4];
       state.currentUser = results[5] && results[5].username ? results[5].username : null;
+      state.soloLectura = !!(results[5] && results[5].soloLectura);
+      if (state.soloLectura) document.body.classList.add("solo-lectura");
       state.checkins = results[6] != null ? results[6] : loadCheckinsLocal();
 
       clients.forEach(function (c) {
@@ -358,6 +365,7 @@
     });
     document.getElementById("btn-hide-start").addEventListener("click", function () { startPickMode("hide"); });
     document.getElementById("btn-hide-manage").addEventListener("click", openHiddenManager);
+    document.getElementById("btn-import").addEventListener("click", function () { openImportModal(); });
     document.getElementById("btn-trip-history").addEventListener("click", function () {
       switchSidebarTab("viajes");
       if (window.innerWidth < 860) {
@@ -679,8 +687,8 @@
 
     if (c.lat == null) {
       html += '<div class="d-zone" style="color:#767676">Sin ubicación exacta en el mapa (dirección incompleta). Usa el teléfono o el email para contactar.</div>';
-      html += '<button class="assign-loc-btn" style="display:block;margin-bottom:10px" onclick="DPMap.assignLocation(' + c.id + ')">📍 Buscarla y asignarla a mano</button>';
-    } else {
+      if (!state.soloLectura) html += '<button class="assign-loc-btn" style="display:block;margin-bottom:10px" onclick="DPMap.assignLocation(' + c.id + ')">📍 Buscarla y asignarla a mano</button>';
+    } else if (!state.soloLectura) {
       html += '<button class="assign-loc-btn" style="display:block;margin-bottom:10px" onclick="DPMap.assignLocation(' + c.id + ')">✎ Corregir esta ubicación</button>';
     }
 
@@ -697,6 +705,8 @@
     if (c.email) html += rowHtml("mail", "mailto:" + c.email, c.email);
     if (c.cp || c.ciudad) html += rowHtml("pin", null, [c.cp, c.ciudad, c.provincia].filter(Boolean).join(", "));
     if (c.nif) html += rowHtml("id", null, "NIF: " + c.nif);
+    if (c.actividad) html += '<div class="d-zone" style="color:var(--gray-700);margin-top:8px">' + escapeHtml(c.actividad) + "</div>";
+    if (c.origen) html += '<div class="d-zone" style="color:#2E7D32;font-size:12px">★ ' + escapeHtml(c.origen) + "</div>";
 
     if (c.personas && c.personas.length) {
       html += '<div class="d-section-title">Personas de contacto (' + c.personas.length + ")</div>";
@@ -826,7 +836,7 @@
   /* ---------------- check-in automático (solo "cerca de un cliente conocido") ---------------- */
 
   function checkAutoCheckin() {
-    if (!state.myLocation || !state.currentUser) return;
+    if (!state.myLocation || !state.currentUser || state.soloLectura) return;
     var now = Date.now();
     state.clients.forEach(function (c) {
       if (c.lat == null) return;
@@ -1238,6 +1248,146 @@
         renderAll();
         closeModal();
         toast("Todos los clientes ocultos han vuelto a aparecer.");
+      });
+    }
+  }
+
+  /* ---------------- importar empresas nuevas desde el PDF de un viaje (solo IMPORTADORES) ----------------
+     Los PDF de viajes llevan dentro un adjunto "empresas-nuevas.json" (lo mete
+     viajes-comerciales/herramientas/adjuntar-empresas.py). Aquí se lee ese adjunto,
+     se enseña la lista, y lo elegido se guarda en el almacén compartido "importadas",
+     que el mapa (y Rumbo) suman a data.json al cargar. */
+
+  function nameKey(s) { return normalize(String(s || "").replace(/^"|"$/g, "")).replace(/[^a-z0-9]/g, ""); }
+
+  function mergeImportadas(clients, list) {
+    var ids = new Set(clients.map(function (c) { return c.id; }));
+    var names = new Set(clients.map(function (c) { return nameKey(c.nombre); }));
+    (list || []).forEach(function (c) {
+      if (ids.has(c.id) || names.has(nameKey(c.nombre))) return;
+      c._importada = true;
+      clients.push(c); ids.add(c.id); names.add(nameKey(c.nombre));
+    });
+  }
+
+  function inflate(bytes) {
+    var ds = new DecompressionStream("deflate");
+    var w = ds.writable.getWriter(); w.write(bytes); w.close().catch(function () {});
+    return new Response(ds.readable).arrayBuffer();
+  }
+
+  // Busca los adjuntos del PDF (/Type/EmbeddedFile) y devuelve el JSON de empresas nuevas
+  function readPdfEmpresas(buf) {
+    var bytes = new Uint8Array(buf);
+    var txt = new TextDecoder("latin1").decode(bytes);
+    var found = [], re = /\/EmbeddedFile\b/g, m;
+    while ((m = re.exec(txt))) {
+      var dictStart = txt.lastIndexOf("<<", m.index);
+      var s = txt.indexOf("stream", m.index);
+      if (s < 0) continue;
+      var dict = txt.slice(dictStart, s);
+      var start = s + 6;
+      if (txt[start] === "\r") start++;
+      if (txt[start] === "\n") start++;
+      var len = /\/Length\s+(\d+)(?!\s+\d+\s+R)/.exec(dict);
+      var end = len ? start + Number(len[1]) : txt.indexOf("endstream", start);
+      var chunk = bytes.subarray(start, end);
+      var flate = /FlateDecode/.test(dict);
+      found.push((flate ? inflate(chunk) : Promise.resolve(chunk)).then(function (b) {
+        try { var j = JSON.parse(new TextDecoder("utf-8").decode(b)); return j && j.dp_nuevas ? j : null; } catch (e) { return null; }
+      }).catch(function () { return null; }));
+    }
+    return Promise.all(found).then(function (r) { return r.filter(Boolean)[0] || null; });
+  }
+
+  function saveImportadas() {
+    return fetch(API_BASE + "?key=importadas", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(state.importadas)
+    }).then(function (r) { if (!r.ok) throw new Error("status " + r.status); });
+  }
+
+  function refreshAfterImport() {
+    recomputeZoneAssignment();
+    state.activeClassifications.add("NUEVO");
+    buildFilterUI();
+    clusterGroup._dpBuilt = false;
+    renderAll();
+  }
+
+  function openImportModal(preview) {
+    var box = document.getElementById("modal-box");
+    var html = "<h3>Importar empresas nuevas de un viaje</h3>";
+    if (!preview) {
+      html += '<label id="imp-drop" class="imp-drop">' +
+        '<input type="file" id="imp-file" accept="application/pdf,.pdf" hidden>' +
+        "<strong>Arrastra aquí el PDF del viaje</strong><br><span>o haz clic para elegirlo</span></label>";
+      var byViaje = {};
+      state.importadas.forEach(function (c) { (byViaje[c.viaje || "—"] = byViaje[c.viaje || "—"] || []).push(c); });
+      var vs = Object.keys(byViaje);
+      html += '<div class="d-section-title">Ya importadas (' + state.importadas.length + ")</div>";
+      html += vs.length ? vs.map(function (v) {
+        return '<div class="zone-row"><div class="zone-name">' + escapeHtml(v) + '<div class="zone-count">' + byViaje[v].length + " empresas · " +
+          escapeHtml(byViaje[v][0].importadoEl || "") + '</div></div><button class="btn-secondary btn-small" data-unimport="' + escapeHtml(v) + '">Quitar</button></div>';
+      }).join("") : '<div class="empty-note">Todavía no has importado ningún viaje.</div>';
+      html += '<div class="modal-actions"><button class="btn-primary" id="imp-close">Cerrar</button></div>';
+    } else {
+      var known = new Set(state.clients.map(function (c) { return nameKey(c.nombre); }));
+      html += '<div class="zone-count" style="margin-bottom:10px">' + escapeHtml(preview.viaje) + " · " + preview.empresas.length + " empresas nuevas en el PDF</div>";
+      html += '<div class="imp-list">' + preview.empresas.map(function (c, i) {
+        var dup = known.has(nameKey(c.nombre));
+        return '<label class="imp-row' + (dup ? " dup" : "") + '"><input type="checkbox" data-i="' + i + '"' + (dup ? " disabled" : " checked") + ">" +
+          "<span><strong>" + escapeHtml(c.nombre) + "</strong>" + (dup ? " <em>(ya está en el mapa)</em>" : "") +
+          '<br><span class="zone-count">' + escapeHtml([c.ciudad, c.provincia].filter(Boolean).join(", ")) + (c.lat == null ? " · sin ubicación" : "") + "</span></span></label>";
+      }).join("") + "</div>";
+      html += '<div class="modal-actions"><button class="btn-secondary" id="imp-back">Cancelar</button>' +
+        '<button class="btn-primary" id="imp-ok">Añadir al mapa</button></div>';
+    }
+    box.innerHTML = html;
+    document.getElementById("modal-backdrop").hidden = false;
+
+    if (!preview) {
+      document.getElementById("imp-close").addEventListener("click", closeModal);
+      var drop = document.getElementById("imp-drop"), input = document.getElementById("imp-file");
+      var handle = function (file) {
+        if (!file) return;
+        file.arrayBuffer().then(readPdfEmpresas).then(function (j) {
+          if (!j || !j.empresas || !j.empresas.length) { toast("Este PDF no trae empresas nuevas para importar (los PDF antiguos no las llevan dentro)."); return; }
+          openImportModal(j);
+        }).catch(function () { toast("No he podido leer ese PDF."); });
+      };
+      input.addEventListener("change", function () { handle(input.files[0]); });
+      ["dragenter", "dragover"].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add("over"); }); });
+      ["dragleave", "drop"].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove("over"); }); });
+      drop.addEventListener("drop", function (e) { handle(e.dataTransfer.files[0]); });
+      box.querySelectorAll("[data-unimport]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var v = btn.dataset.unimport;
+          if (!confirm('¿Quitar del mapa las empresas importadas de "' + v + '"?')) return;
+          var gone = new Set(state.importadas.filter(function (c) { return (c.viaje || "—") === v; }).map(function (c) { return c.id; }));
+          state.importadas = state.importadas.filter(function (c) { return !gone.has(c.id); });
+          state.clients = state.clients.filter(function (c) { return !(c._importada && gone.has(c.id)); });
+          saveImportadas().then(function () { toast(gone.size + " empresas quitadas."); })
+            .catch(function () { toast("No se pudo guardar en el servidor."); });
+          refreshAfterImport();
+          openImportModal();
+        });
+      });
+    } else {
+      document.getElementById("imp-back").addEventListener("click", function () { openImportModal(); });
+      document.getElementById("imp-ok").addEventListener("click", function () {
+        var picked = Array.from(box.querySelectorAll(".imp-list input:checked")).map(function (i) { return preview.empresas[Number(i.dataset.i)]; });
+        if (!picked.length) { toast("No hay ninguna empresa marcada."); return; }
+        var maxId = state.clients.concat(state.importadas).reduce(function (a, c) { return Math.max(a, Number(c.id) || 0); }, 20000);
+        var hoy = new Date().toLocaleDateString("es-ES");
+        var nuevas = picked.map(function (c, i) {
+          return Object.assign({}, c, { id: maxId + 1 + i, viaje: preview.viaje, importadoPor: state.currentUser || "", importadoEl: hoy });
+        });
+        state.importadas = state.importadas.concat(nuevas);
+        mergeImportadas(state.clients, nuevas);
+        refreshAfterImport();
+        saveImportadas().then(function () { toast(nuevas.length + " empresas nuevas añadidas al mapa para todo el equipo."); })
+          .catch(function () { toast("Añadidas aquí, pero NO se pudieron guardar en el servidor."); });
+        closeModal();
       });
     }
   }

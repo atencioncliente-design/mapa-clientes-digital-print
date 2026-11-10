@@ -8,11 +8,10 @@
 
   var CLASS_COLORS = {
     "CLIENTE": "#A6192E",
-    "PROVEEDOR": "#1A1A1A",
     "CARTERA (contactada)": "#8C8C8C",
     "CARTERA (sin contacto)": "#C9C9C9",
     "SIN CLASIFICAR": "#C9C9C9",
-    "GRUPO PROPIO": "#3B3B3B"
+    "NUEVO": "#2E7D32"
   };
   var DEFAULT_COLOR = "#A6192E";
 
@@ -262,9 +261,14 @@
       apiGet("hidden").catch(function () { return null; }),
       apiGet("zones").catch(function () { return null; }),
       fetch("/.netlify/functions/whoami").then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }),
-      apiGet("checkins").catch(function () { return null; })
+      apiGet("checkins").catch(function () { return null; }),
+      apiGet("importadas").catch(function () { return null; })
     ]).then(function (results) {
-      var clients = results[0];
+      // + empresas nuevas importadas de PDF de viajes (sin repetir nombres)
+      var seen = new Set(results[0].map(function (c) { return String(c.nombre).toLowerCase(); }));
+      var clients = results[0].concat((Array.isArray(results[7]) ? results[7] : []).filter(function (c) {
+        return !seen.has(String(c.nombre).toLowerCase());
+      }));
       state.trips = results[1] != null ? results[1] : loadTripsLocal();
       state.manualGeo = results[2] != null ? results[2] : loadManualGeoLocal();
       state.hiddenIds = new Set(results[3] != null ? results[3] : loadHiddenLocal());

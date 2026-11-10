@@ -243,3 +243,18 @@ netlify.toml, package.json               Configuración de Netlify (funciones, c
   poder contactar igualmente.
 - El mapa base es de OpenStreetMap (gratuito, sin necesidad de clave ni
   facturación). El botón "Cómo llegar" sí abre Google Maps para la ruta.
+
+## Usuarios especiales y empresas nuevas (nov 2026)
+
+- **Hugo** (`hugo` / `hugo`): solo ve el mapa y las fichas. Sin viajes, zonas,
+  ocultar, tablero, pizarra, Rumbo ni catálogo, y el servidor no le deja guardar
+  nada. Lista `SOLO_MAPA` en `netlify/shared/usuarios.js`.
+- **Proveedores y grupo propio** ya no están en `data/data.json` (el mapa es
+  solo de clientes). `tools/5-merge.ps1` los quita también al regenerar.
+- **Empresas nuevas de los viajes de Salva**: clasificación `NUEVO` (pin verde,
+  filtro "Nuevas"). Las primeras 233 están en `data/nuevas-viajes.json`.
+- **Importar nuevas** (botón solo para `IMPORTADORES`, hoy Aurelio): se arrastra
+  el PDF de un viaje; el PDF lleva dentro un adjunto `empresas-nuevas.json`
+  (lo mete `viajes-comerciales/herramientas/adjuntar-empresas.py`). Lo importado
+  se guarda en el almacén compartido `importadas` y lo ven todos (mapa, tablero
+  y Rumbo). Desde la misma ventana se puede quitar un viaje importado.

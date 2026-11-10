@@ -424,3 +424,20 @@ select#filter-zona, select#filter-provincia {
   .detail-sheet { left: 0; right: 0; bottom: 0; max-height: 78vh; }
   #detail-content { max-height: 78vh; }
 }
+
+/* Usuarios solo-mapa (p. ej. Hugo): ven mapa y clientes, sin herramientas de edición */
+body.solo-lectura #zone-toolbar,
+body.solo-lectura .sidebar-tab[data-tab="viajes"],
+body.solo-lectura #tab-viajes,
+body.solo-lectura .assign-loc-btn { display: none !important; }
+
+/* Importar empresas nuevas desde el PDF de un viaje (solo Aurelio) */
+#btn-import[hidden] { display: none !important; }
+.imp-drop { display: block; border: 2px dashed var(--gray-300); border-radius: var(--radius); padding: 26px 16px; text-align: center; cursor: pointer; color: var(--gray-700); margin-bottom: 14px; }
+.imp-drop span { font-size: 12.5px; color: var(--gray-500); }
+.imp-drop.over { border-color: #2E7D32; background: #EAF4EA; }
+.imp-list { max-height: 50vh; overflow-y: auto; border: 1px solid var(--gray-200); border-radius: 8px; }
+.imp-row { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; border-bottom: 1px solid var(--gray-200); font-size: 13.5px; cursor: pointer; }
+.imp-row:last-child { border-bottom: none; }
+.imp-row.dup { opacity: .55; cursor: default; }
+.imp-row input { margin-top: 3px; }

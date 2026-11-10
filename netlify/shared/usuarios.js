@@ -4,6 +4,9 @@
 //  RUMBO_USERS  → SOLO entran a Rumbo (/rumbo/). No ven el mapa ni el tablero.
 //  TABLERO      → los únicos usuarios que pueden abrir el tablero (/v3/).
 //  RUMBO_ADMINS → ven el listado de viajes armados en Rumbo (triple clic en el logo).
+//  SOLO_MAPA    → SOLO ven el mapa y las fichas de clientes, sin poder cambiar
+//                 nada (ni viajes, ni zonas, ni ocultar). Sin tablero, pizarra,
+//                 Rumbo ni catálogo.
 
 export const USERS = {
   "aurelio": "digitalprint2026",
@@ -18,6 +21,13 @@ export const USERS = {
 export const RUMBO_USERS = {
   "alonso": "8j5t9bf3nb"
 };
+
+export const SOLO_MAPA = {
+  "hugo": "hugo"
+};
+
+// Los únicos que pueden importar empresas nuevas desde el PDF de un viaje
+export const IMPORTADORES = ["aurelio"];
 
 export const TABLERO = ["aurelio", "victor", "salva", "javi", "santi"];
 
@@ -35,6 +45,7 @@ export function checkAuth(header) {
     const pass = decoded.slice(sep + 1);
     if (USERS[user] && USERS[user] === pass) return { user, role: "mapa" };
     if (RUMBO_USERS[user] && RUMBO_USERS[user] === pass) return { user, role: "rumbo" };
+    if (SOLO_MAPA[user] && SOLO_MAPA[user] === pass) return { user, role: "lectura" };
   } catch (e) {}
   return null;
 }

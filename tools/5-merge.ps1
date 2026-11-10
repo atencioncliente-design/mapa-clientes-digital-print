@@ -18,6 +18,8 @@ function Lookup($q) {
 $geocoded = 0; $viaFallback = 0
 $out = New-Object System.Collections.Generic.List[object]
 foreach ($c in $clients) {
+    # proveedores y grupo propio no se publican: el mapa es solo de clientes
+    if ($c.clasificacion -in @("PROVEEDOR", "GRUPO PROPIO")) { continue }
     $lat = $null; $lng = $null
     $entry = Lookup $c.geocodeQuery
 
@@ -40,6 +42,13 @@ foreach ($c in $clients) {
         pais = $c.pais; calidad = $c.calidad; nif = $c.nif; telefono = $c.telefono
         email = $c.email; web = $c.web; personas = $c.personas; lat = $lat; lng = $lng
     })
+}
+
+# Empresas NUEVAS sacadas de los viajes de Salva (no vienen del Excel): se añaden siempre
+$nuevasFile = Join-Path $PSScriptRoot "..\data\nuevas-viajes.json"
+if (Test-Path $nuevasFile) {
+    $nuevas = [IO.File]::ReadAllText($nuevasFile, [Text.Encoding]::UTF8) | ConvertFrom-Json
+    foreach ($n in $nuevas) { $out.Add($n) }
 }
 
 $out | ConvertTo-Json -Depth 6 -Compress | Set-Content -Path $OutFile -Encoding UTF8

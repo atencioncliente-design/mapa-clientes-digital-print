@@ -30,7 +30,8 @@ function rumboAllowed(url, method) {
   if (p === "/rumbo" || p.startsWith("/rumbo/")) return true;
   if (p === "/.netlify/functions/rumbo" || p === "/.netlify/functions/odoo") return true;
   if (method === "GET" && p === "/data/data.json") return true;
-  if (method === "GET" && p === "/.netlify/functions/store" && url.searchParams.get("key") === "hidden") return true;
+  if (p === "/js/actualizar.js") return true;   // recarga sola cuando hay versión nueva
+  if (method === "GET" && p === "/.netlify/functions/store" && ["hidden", "importadas"].includes(url.searchParams.get("key"))) return true;
   return false;
 }
 
@@ -43,6 +44,14 @@ export default async (request, context) => {
     if (rumboAllowed(url, request.method)) return context.next();
     if (url.pathname === "/" || url.pathname === "/index.html") return Response.redirect(new URL("/rumbo/", url), 302);
     return forbidden();
+  }
+
+  // solo-mapa (p. ej. Hugo): fuera tablero, pizarra, Rumbo, catálogo y Odoo
+  if (auth.role === "lectura") {
+    const p = url.pathname;
+    const bloqueado = p === "/v3" || p.startsWith("/v3/") || p === "/rumbo" || p.startsWith("/rumbo/") ||
+      p.startsWith("/catalogo") || p === "/.netlify/functions/rumbo" || p === "/.netlify/functions/odoo";
+    if (bloqueado) return forbidden();
   }
 
   // el tablero de control (v3) es privado
